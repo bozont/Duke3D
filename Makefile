@@ -4,7 +4,7 @@
 #
 
 PROJECT_NAME := Duke3D
-CFLAGS += -Wno-error=char-subscripts -Xlinker -Map=./output.map 
+CFLAGS += -Wno-error=char-subscripts -Xlinker -Map=./output.map -Wno-stringop-overflow -Wno-tautological-compare -Wno-uninitialized
 
 include $(IDF_PATH)/make/project.mk
 

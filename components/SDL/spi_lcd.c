@@ -25,13 +25,13 @@
 #include "SDL.h"
 
 #if 0
-#define PIN_NUM_MISO 25
 #define PIN_NUM_MOSI 23
+#define PIN_NUM_MISO -1
 #define PIN_NUM_CLK  19
-#define PIN_NUM_CS   22
-#define PIN_NUM_DC   21
-#define PIN_NUM_RST  18
-#define PIN_NUM_BCKL 5
+#define PIN_NUM_CS   5
+#define PIN_NUM_DC   22
+#define PIN_NUM_RST  32
+#define PIN_NUM_BCKL 4
 #else
 #define PIN_NUM_MOSI CONFIG_HW_LCD_MOSI_GPIO
 #define PIN_NUM_MISO CONFIG_HW_LCD_MISO_GPIO
@@ -101,8 +101,8 @@ static const ili_init_cmd_t ili_init_cmds[]={
     {0xC1, {0x12}, 1},    //Power control   //SAP[2:0];BT[3:0]
     {0xC5, {0x32, 0x3C}, 2},    //VCM control
     {0xC7, {0x91}, 1},    //VCM control2
-    //{0x36, {(MADCTL_MV | MADCTL_MX | TFT_RGB_BGR)}, 1},    // Memory Access Control
-    {0x36, {(MADCTL_MV | MADCTL_MY | TFT_RGB_BGR)}, 1},    // Memory Access Control
+    {0x36, {(MADCTL_MV | MADCTL_MX | TFT_RGB_BGR)}, 1},    // Memory Access Control
+    //{0x36, {(MADCTL_MV | MADCTL_MY | TFT_RGB_BGR)}, 1},    // Memory Access Control
     {0x3A, {0x55}, 1},
     {0xB1, {0x00, 0x1B}, 2},  // Frame Rate Control (1B=70, 1F=61, 10=119)
     {0xB6, {0x0A, 0xA2}, 2},    // Display Function Control
@@ -218,15 +218,16 @@ void ili_init(spi_device_handle_t spi)
     int cmd=0;
     //Initialize non-SPI GPIOs
     gpio_set_direction(PIN_NUM_DC, GPIO_MODE_OUTPUT);
-    //gpio_set_direction(PIN_NUM_RST, GPIO_MODE_OUTPUT);
+    gpio_set_direction(PIN_NUM_RST, GPIO_MODE_OUTPUT);
+    gpio_set_direction(PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
     if(PIN_NUM_BCKL != -1)
         gpio_set_direction(PIN_NUM_BCKL, GPIO_MODE_OUTPUT);
 
     backlight_init();
     //Reset the display
-    //gpio_set_level(PIN_NUM_RST, 0);
-    //vTaskDelay(100 / portTICK_RATE_MS);
-    //gpio_set_level(PIN_NUM_RST, 1);
+    gpio_set_level(PIN_NUM_RST, 0);
+    vTaskDelay(100 / portTICK_RATE_MS);
+    gpio_set_level(PIN_NUM_RST, 1);
     vTaskDelay(100 / portTICK_RATE_MS);
 
     //Send all the commands
@@ -333,7 +334,7 @@ void IRAM_ATTR displayTask(void *arg) {
 
     esp_err_t ret;
     spi_bus_config_t buscfg={
-        .miso_io_num=PIN_NUM_MISO,
+        .miso_io_num=-1,
         .mosi_io_num=PIN_NUM_MOSI,
         .sclk_io_num=PIN_NUM_CLK,
         .quadwp_io_num=-1,
@@ -355,10 +356,10 @@ void IRAM_ATTR displayTask(void *arg) {
 
     SDL_LockDisplay();
     //Initialize the SPI bus
-    ret=spi_bus_initialize(/*CONFIG_HW_LCD_MISO_GPIO == 19 ? VSPI_HOST :*/ HSPI_HOST, &buscfg, 2);  // DMA Channel
+    ret=spi_bus_initialize(VSPI_HOST, &buscfg, 1);  // DMA Channel
     assert(ret==ESP_OK);
     //Attach the LCD to the SPI bus
-    ret=spi_bus_add_device(/*CONFIG_HW_LCD_MISO_GPIO == 19 ? VSPI_HOST :*/ HSPI_HOST, &devcfg, &spi);
+    ret=spi_bus_add_device(VSPI_HOST, &devcfg, &spi);
     assert(ret==ESP_OK);
     //Initialize the LCD
     ili_init(spi);

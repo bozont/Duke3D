@@ -9,6 +9,7 @@
 #include "esp_vfs_fat.h"
 #include "driver/sdmmc_host.h"
 #include "driver/sdspi_host.h"
+#include "sdmmc_cmd.h"
 
 typedef struct {
     Uint8 major;
