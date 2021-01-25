@@ -1,3 +1,6 @@
+
+#include <stdlib.h>
+#include <driver/uart.h>
 #include "SDL_event.h"
 #define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
@@ -74,6 +77,7 @@ typedef struct {
 bool initInput = false;
 
 static xQueueHandle gpio_evt_queue = NULL;
+static xQueueHandle uart_evt_queue = NULL;
 
 int checkPin(int state, uint8_t *lastState, SDL_Scancode sc, SDL_Keycode kc, SDL_Event *event)
 {
@@ -164,8 +168,18 @@ int SDL_PollEvent(SDL_Event * event)
     if(!initInput)
         inputInit();
 
-#ifndef CONFIG_HW_ODROID_GO
     GPIOEvent ev;
+
+    if(xQueueReceive(uart_evt_queue, &ev, 0)) {
+        event->key.keysym.sym = ev.keycode;
+        event->key.keysym.scancode = ev.scancode;
+        event->key.type = ev.type;
+        event->key.keysym.mod = 0;
+        event->key.state = ev.type == SDL_KEYDOWN ? SDL_PRESSED : SDL_RELEASED;     //< ::SDL_PRESSED or ::SDL_RELEASED
+        return 1;
+    }
+
+#ifndef CONFIG_HW_ODROID_GO
     if(xQueueReceive(gpio_evt_queue, &ev, 0)) {
         event->key.keysym.sym = ev.keycode;
         event->key.keysym.scancode = ev.scancode;
@@ -242,4 +256,128 @@ void inputInit()
 
 	printf("keyboard: GPIO task created.\n");
     initInput = true;
+}
+
+
+typedef struct {
+	char key;
+	SDL_Scancode scancode;
+    SDL_Keycode keycode;
+} UartGamepadKeyMap;
+
+typedef struct {
+    Uint32 type;        /**< ::SDL_KEYDOWN or ::SDL_KEYUP */
+    SDL_Scancode scancode;
+    SDL_Scancode keycode;
+} UartKeyEvent;
+
+#define UARTGAMEPAD_KEY_ESC             'n'
+#define UARTGAMEPAD_KEY_UP              'w'
+#define UARTGAMEPAD_KEY_DOWN            's'
+#define UARTGAMEPAD_KEY_LEFT            'a'
+#define UARTGAMEPAD_KEY_RIGHT           'd'
+#define UARTGAMEPAD_KEY_FIRE            'k'
+#define UARTGAMEPAD_KEY_USE             'e'
+#define UARTGAMEPAD_KEY_JUMP            'm'
+
+typedef struct {
+    SDL_Scancode scancode;
+    SDL_Keycode keycode;
+    char mapped_uart_char;
+    char key_as_text[10];
+    int64_t press_time;
+} keyMapElement;
+
+static const int64_t key_unpress_delay = 350000;
+#define KEY_MAX 8
+
+keyMapElement uart_keymap[KEY_MAX] = {
+    {SDL_SCANCODE_UP,       SDLK_UP,        UARTGAMEPAD_KEY_UP,         "UP",       -1},
+    {SDL_SCANCODE_RIGHT,    SDLK_RIGHT,     UARTGAMEPAD_KEY_RIGHT,      "RIGHT",    -1},
+    {SDL_SCANCODE_DOWN,     SDLK_DOWN,      UARTGAMEPAD_KEY_DOWN,       "DOWN",     -1},
+    {SDL_SCANCODE_LEFT,     SDLK_LEFT,      UARTGAMEPAD_KEY_LEFT,       "LEFT",     -1},
+    {SDL_SCANCODE_LCTRL,    SDLK_LCTRL,     UARTGAMEPAD_KEY_FIRE,       "FIRE",     -1},
+    {SDL_SCANCODE_SPACE,    SDLK_SPACE,     UARTGAMEPAD_KEY_USE,        "USE",      -1},
+    {SDL_SCANCODE_ESCAPE,   SDLK_ESCAPE,    UARTGAMEPAD_KEY_ESC,        "ESC",      -1},
+    {SDL_SCANCODE_A,        SDLK_a,         UARTGAMEPAD_KEY_JUMP,       "JUMP",     -1},
+};
+
+void postDukeKeyEvent(int sdl_scancode, int sdl_keycode, int key_event_type) {
+    UartKeyEvent ev;
+    ev.scancode = sdl_scancode;
+    ev.keycode = sdl_keycode;
+    ev.type = key_event_type;
+    xQueueSend(uart_evt_queue, &ev, NULL);
+}
+
+void keyCheckAutoUnpress() {
+    int64_t curr_time = esp_timer_get_time();
+
+    for(int i = 0 ; i < KEY_MAX ; i++) {
+        if((uart_keymap[i].press_time > 0) && (uart_keymap[i].press_time + key_unpress_delay < curr_time)) {
+            uart_keymap[i].press_time = -1;
+            postDukeKeyEvent(uart_keymap[i].scancode, uart_keymap[i].keycode, SDL_KEYUP);
+        }
+    }
+}
+
+void uartGamepadProcessInput(char input) {
+
+    for(int i = 0 ; i < KEY_MAX ; i++) {
+        if(input == uart_keymap[i].mapped_uart_char) {
+            uart_keymap[i].press_time = esp_timer_get_time();
+            postDukeKeyEvent(uart_keymap[i].scancode, uart_keymap[i].keycode, SDL_KEYDOWN);
+            ets_printf("uartGamepad: %s\n", uart_keymap[i].key_as_text);
+            return;
+        }
+    }
+
+    ets_printf("uartGamepad: unmapped key (%c)\n", input);
+}
+
+#define UART_MODULE_NUM    0
+#define UART_BAUD_RATE     115200
+#define UART_BUF_SIZE      512
+
+void uartGamepadTask(void *arg) {
+    ets_printf("uartGamepad: task starting\n");
+
+    uart_config_t uart_config = {
+        .baud_rate = UART_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+    int intr_alloc_flags = 0;
+
+#if CONFIG_UART_ISR_IN_IRAM
+    intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+#endif
+
+    ESP_ERROR_CHECK(uart_driver_install(UART_MODULE_NUM, UART_BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(UART_MODULE_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_MODULE_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+    uint8_t *uart_rx_buf = (uint8_t*)malloc(UART_BUF_SIZE);
+    int uart_buf_iter = 0;
+    int uart_rx_buf_len = 0;
+
+    uart_evt_queue = xQueueCreate(10, sizeof(UartKeyEvent));
+
+    while(1) {
+        uart_rx_buf_len = uart_read_bytes(UART_MODULE_NUM, uart_rx_buf, UART_BUF_SIZE, 20 / portTICK_RATE_MS);
+
+        for(uart_buf_iter = 0 ; uart_buf_iter < uart_rx_buf_len ; uart_buf_iter++) {
+            uartGamepadProcessInput(uart_rx_buf[uart_buf_iter]);
+        }
+        /* uart_write_bytes(UART_MODULE_NUM, (const char *) uart_rx_buf, uart_rx_buf_len); */
+        keyCheckAutoUnpress();
+    }
+}
+
+void uartGamepadInit() {
+    ets_printf("uartGamepad: initializing\n");
+    xTaskCreatePinnedToCore(&uartGamepadTask, "uartgamepad", 1024, NULL, 7, NULL, 0);
 }

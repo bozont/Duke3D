@@ -8166,6 +8166,8 @@ int main(int argc,char  **argv)
     
     SDL_InitSD();
 
+    uartGamepadInit();
+
 	// FIX_00033: Fake multi and AI are now fully working
 	ud.multimode = 1;  // xduke: must be done before checkcommandline or that will prevent Fakeplayer and AI
 	
