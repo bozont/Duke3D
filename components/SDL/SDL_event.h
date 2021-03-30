@@ -700,3 +700,10 @@ extern DECLSPEC Uint32 SDLCALL SDL_RegisterEvents(int numevents);
 void inputInit();
 extern int keyMode;
 void uartGamepadInit();
+
+extern xQueueHandle btkeyboard_evt_queue;
+typedef struct {
+    Uint32 type;        /**< ::SDL_KEYDOWN or ::SDL_KEYUP */
+    SDL_Scancode scancode;
+    SDL_Scancode keycode;
+} BtKeyEvent;

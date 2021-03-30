@@ -286,7 +286,7 @@ char *MV_ErrorString
    Mixes the sound into the buffer.
 ---------------------------------------------------------------------*/
 
-IRAM_ATTR static void MV_Mix( VoiceNode *voice )
+ static void MV_Mix( VoiceNode *voice )
 {
    uint8_t        *start;
    int            length;
@@ -378,7 +378,7 @@ IRAM_ATTR static void MV_Mix( VoiceNode *voice )
    Adds a voice to the play list.
 ---------------------------------------------------------------------*/
 
-IRAM_ATTR void MV_PlayVoice( VoiceNode *voice )
+ void MV_PlayVoice( VoiceNode *voice )
 {
    unsigned flags;
 
@@ -398,7 +398,7 @@ IRAM_ATTR void MV_PlayVoice( VoiceNode *voice )
    Removes the voice from the play list and adds it to the free list.
 ---------------------------------------------------------------------*/
 
-IRAM_ATTR void MV_StopVoice( VoiceNode *voice )
+ void MV_StopVoice( VoiceNode *voice )
 {
    VoiceNode* pPrev;
    VoiceNode* pNext;
@@ -441,7 +441,7 @@ IRAM_ATTR void MV_StopVoice( VoiceNode *voice )
 
 // static int backcolor = 1;
 
-IRAM_ATTR void MV_ServiceVoc
+ void MV_ServiceVoc
 (
  void
  )
@@ -529,7 +529,7 @@ IRAM_ATTR void MV_ServiceVoc
    Interperate the information of a VOC format sound file.
 ---------------------------------------------------------------------*/
 
-IRAM_ATTR playbackstatus MV_GetNextVOCBlock
+ playbackstatus MV_GetNextVOCBlock
    (
    VoiceNode *voice
    )
@@ -805,7 +805,7 @@ IRAM_ATTR playbackstatus MV_GetNextVOCBlock
    Controls playback of demand fed data.
 ---------------------------------------------------------------------*/
 
-IRAM_ATTR playbackstatus MV_GetNextDemandFeedBlock
+ playbackstatus MV_GetNextDemandFeedBlock
    (
    VoiceNode *voice
    )
@@ -847,7 +847,7 @@ IRAM_ATTR playbackstatus MV_GetNextDemandFeedBlock
    Controls playback of demand fed data.
 ---------------------------------------------------------------------*/
 
-IRAM_ATTR playbackstatus MV_GetNextRawBlock
+ playbackstatus MV_GetNextRawBlock
    (
    VoiceNode *voice
    )
@@ -888,7 +888,7 @@ IRAM_ATTR playbackstatus MV_GetNextRawBlock
    Controls playback of demand fed data.
 ---------------------------------------------------------------------*/
 
-IRAM_ATTR playbackstatus MV_GetNextWAVBlock
+ playbackstatus MV_GetNextWAVBlock
    (
    VoiceNode *voice
    )
@@ -3392,7 +3392,7 @@ int MV_LockMemory
    }
 
 #ifndef PLAT_DOS
-IRAM_ATTR void ClearBuffer_DW( void *ptr, unsigned data, int length )
+ void ClearBuffer_DW( void *ptr, unsigned data, int length )
 {
 	unsigned *d = (unsigned *)ptr;
 	

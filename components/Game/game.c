@@ -785,7 +785,7 @@ void getpackets(void)
 
 //From player.c
 void computergetinput(int32_t snum, input *syn);
-IRAM_ATTR void faketimerhandler()
+ void faketimerhandler()
 {
     int32_t i, j, k;
     input *osyn, *nsyn;
@@ -2943,7 +2943,7 @@ void updatesectorz(int32_t x, int32_t y, int32_t z, short *sectnum)
     *sectnum = -1;
 }
 
-IRAM_ATTR void view(struct player_struct *pp, int32_t *vx, int32_t *vy,int32_t *vz,short *vsectnum, short ang, short horiz)
+ void view(struct player_struct *pp, int32_t *vx, int32_t *vy,int32_t *vz,short *vsectnum, short ang, short horiz)
 {
      spritetype *sp;
      int32_t i, nx, ny, nz, hx, hy, hitx, hity, hitz;
@@ -3233,7 +3233,7 @@ static void se40code(int32_t x,int32_t y,int32_t z,int32_t a,int32_t h, int32_t 
 
 static int32_t oyrepeat=-1;
 
-IRAM_ATTR void displayrooms(short snum,int32_t smoothratio)
+ void displayrooms(short snum,int32_t smoothratio)
 {
     int32_t cposx,cposy,cposz,dst,j,fz,cz;
     short sect, cang, k, choriz;

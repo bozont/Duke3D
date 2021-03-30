@@ -170,6 +170,17 @@ int SDL_PollEvent(SDL_Event * event)
 
     GPIOEvent ev;
 
+    BtKeyEvent btev;
+
+    if(xQueueReceive(btkeyboard_evt_queue, &btev, 0)) {
+        event->key.keysym.sym = btev.keycode;
+        event->key.keysym.scancode = btev.scancode;
+        event->key.type = btev.type;
+        event->key.keysym.mod = 0;
+        event->key.state = btev.type == SDL_KEYDOWN ? SDL_PRESSED : SDL_RELEASED;     //< ::SDL_PRESSED or ::SDL_RELEASED
+        return 1;
+    }
+
     if(xQueueReceive(uart_evt_queue, &ev, 0)) {
         event->key.keysym.sym = ev.keycode;
         event->key.keysym.scancode = ev.scancode;

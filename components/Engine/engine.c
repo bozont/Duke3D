@@ -1578,7 +1578,7 @@ IRAM_ATTR static void maskwallscan(int32_t x1, int32_t x2,
 }
 
 /* renders parallaxed skies/floors  --ryan. */
-IRAM_ATTR static void parascan(int32_t dax1, int32_t dax2, int32_t sectnum,uint8_t  dastat, int32_t bunch)
+ static void parascan(int32_t dax1, int32_t dax2, int32_t sectnum,uint8_t  dastat, int32_t bunch)
 {
     sectortype *sec;
     int32_t j, k, l, m, n, x, z, wallnum, nextsectnum, globalhorizbak;
@@ -2644,7 +2644,7 @@ static void dosetaspect(void)
 
   Return: pvWallID1 in the potentially visible wall list is in front of pvWallID2 (in the same potentially visible list)
 */
-IRAM_ATTR int wallfront(int32_t pvWallID1, int32_t pvWallID2)
+ int wallfront(int32_t pvWallID1, int32_t pvWallID2)
 {
     walltype *wal;
     int32_t x11, y11, x21, y21, x12, y12, x22, y22, dx, dy, t1, t2;
@@ -3082,7 +3082,7 @@ IRAM_ATTR static void transmaskvline(int32_t x)
     transarea += y2v-y1v;
 }
 
-IRAM_ATTR static void transmaskvline2 (int32_t x)
+ static void transmaskvline2 (int32_t x)
 {
     int32_t y1, y2, x2;
     intptr_t i;
@@ -3787,7 +3787,7 @@ static int clippoly4(int32_t cx1, int32_t cy1, int32_t cx2, int32_t cy2)
 
 
 
-IRAM_ATTR static void  dorotatesprite (int32_t sx, int32_t sy, int32_t z, short a, short picnum,
+ static void  dorotatesprite (int32_t sx, int32_t sy, int32_t z, short a, short picnum,
                             int8_t dashade, uint8_t  dapalnum, uint8_t  dastat, int32_t cx1,
                             int32_t cy1, int32_t cx2, int32_t cy2)
 {
@@ -4338,7 +4338,7 @@ IRAM_ATTR static void  dorotatesprite (int32_t sx, int32_t sy, int32_t z, short 
 }
 
 
-IRAM_ATTR void nextpage(void)
+ void nextpage(void)
 {
     int32_t i;
     permfifotype *per;
@@ -4385,7 +4385,7 @@ IRAM_ATTR void nextpage(void)
 
 
 
-IRAM_ATTR int clipinsidebox(int32_t x, int32_t y, short wallnum, int32_t walldist)
+ int clipinsidebox(int32_t x, int32_t y, short wallnum, int32_t walldist)
 {
     walltype *wal;
     int32_t x1, y1, x2, y2, r;
@@ -4454,7 +4454,7 @@ IRAM_ATTR static int clipinsideboxline(int32_t x, int32_t y, int32_t x1, int32_t
 }
 
 
-IRAM_ATTR void drawline256 (int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint8_t  col)
+ void drawline256 (int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint8_t  col)
 {
     int32_t dx, dy, i, j, inc, plc, daend;
     uint8_t* p;
@@ -4552,7 +4552,7 @@ IRAM_ATTR void drawline256 (int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint
  If it is an even nymber of time:(x,y) is outside the sector.
  */
 
-IRAM_ATTR int inside(int32_t x, int32_t y, short sectnum)
+ int inside(int32_t x, int32_t y, short sectnum)
 {
     walltype *wal;
     int32_t i, x1, y1, x2, y2;
@@ -4605,7 +4605,7 @@ IRAM_ATTR int inside(int32_t x, int32_t y, short sectnum)
 }
 
 
-IRAM_ATTR int getangle(int32_t xvect, int32_t yvect)
+ int getangle(int32_t xvect, int32_t yvect)
 {
     if ((xvect|yvect) == 0)
         return(0);
@@ -4827,7 +4827,7 @@ IRAM_ATTR static void ceilspritescan (int32_t x1, int32_t x2)
     faketimerhandler();
 }
 
-IRAM_ATTR static void drawsprite (int32_t snum)
+ static void drawsprite (int32_t snum)
 {
     spritetype *tspr;
     sectortype *sec;
@@ -9049,7 +9049,7 @@ IRAM_ATTR void plotpixel(int32_t x, int32_t y, uint8_t  col)
 }
 
 
-IRAM_ATTR uint8_t  getpixel(int32_t x, int32_t y)
+ uint8_t  getpixel(int32_t x, int32_t y)
 {
     return(readpixel(ylookup[y]+x+frameplace));
 }
@@ -9141,7 +9141,7 @@ void completemirror(void)
 }
 
 
-IRAM_ATTR int sectorofwall(short theline)
+ int sectorofwall(short theline)
 {
     int32_t i, gap;
 
@@ -9164,7 +9164,7 @@ IRAM_ATTR int sectorofwall(short theline)
 }
 
 
-IRAM_ATTR int getceilzofslope(short sectnum, int32_t dax, int32_t day)
+ int getceilzofslope(short sectnum, int32_t dax, int32_t day)
 {
     int32_t dx, dy, i, j;
     walltype *wal;
@@ -9180,7 +9180,7 @@ IRAM_ATTR int getceilzofslope(short sectnum, int32_t dax, int32_t day)
 }
 
 
-IRAM_ATTR int getflorzofslope(short sectnum, int32_t dax, int32_t day)
+ int getflorzofslope(short sectnum, int32_t dax, int32_t day)
 {
     int32_t dx, dy, i, j;
     walltype *wal;
