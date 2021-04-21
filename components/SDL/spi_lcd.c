@@ -42,8 +42,6 @@
 #define PIN_NUM_BCKL CONFIG_HW_LCD_BL_GPIO
 #endif
 
-//You want this, especially at higher framerates. The 2nd buffer is allocated in iram anyway, so isn't really in the way.
-#define DOUBLE_BUFFER
 const int DUTY_MAX = 0x1fff;
 bool isBackLightIntialized = false;
 const int LCD_BACKLIGHT_ON_VALUE = 1;
@@ -310,14 +308,9 @@ void IRAM_ATTR send_header_cleanup(spi_device_handle_t spi)
 }
 
 
-#ifndef DOUBLE_BUFFER
-volatile static uint16_t *currFbPtr=NULL;
-#else
 //Warning: This gets squeezed into IRAM.
 static uint32_t *currFbPtr=NULL;
-#endif
 SemaphoreHandle_t dispSem = NULL;
-SemaphoreHandle_t dispDoneSem = NULL;
 
 #define NO_SIM_TRANS 5 //Amount of SPI transfers to queue in parallel
 #define MEM_PER_TRANS 320*2 //in 16-bit words
@@ -379,16 +372,12 @@ void IRAM_ATTR displayTask(void *arg) {
 		/* Take the display semaphore (a signal that the framebuffer (currFbPtr) has new data */
 		/* The task is blocked here until the semaphore is available */
 		xSemaphoreTake(dispSem, portMAX_DELAY);
-
-#ifndef DOUBLE_BUFFER
-		uint8_t *myData=(uint8_t*)currFbPtr;
-#endif
         SDL_LockDisplay();
+
 		send_header_start(spi, 0, screen_boarder, 320, 240-screen_boarder*2);
 		send_header_cleanup(spi);
         
 		for(x=0; x<320*(240-screen_boarder*2); x+=MEM_PER_TRANS) {
-#ifdef DOUBLE_BUFFER
 			for(i = 0; i < MEM_PER_TRANS; i += 4) {
 				/* Get 4 bytes from the framebuffer (uint8 * 4) */
 				uint32_t d = currFbPtr[(x+i)/4];
@@ -400,12 +389,7 @@ void IRAM_ATTR displayTask(void *arg) {
 				dmamem[idx][i+2] = lcdpal[(d>>16)&0xff];
 				dmamem[idx][i+3] = lcdpal[(d>>24)&0xff];
 			}
-#else
-			for (i=0; i<MEM_PER_TRANS; i++) {
-				dmamem[idx][i]=lcdpal[myData[i]];
-			}
-			myData+=MEM_PER_TRANS;
-#endif
+
 			/* Set up the SPI transfer for the currently filled buffer */
 			trans[idx].length=MEM_PER_TRANS*16;
 			trans[idx].user=(void*)1;
@@ -450,50 +434,36 @@ void IRAM_ATTR displayTask(void *arg) {
 //#include    <xtensa/simcall.h>
 
 void spi_lcd_wait_finish() {
-#ifndef DOUBLE_BUFFER
-	//xSemaphoreTake(dispDoneSem, portMAX_DELAY);
-#endif
+	;
 }
 
 void spi_lcd_send(uint16_t *scr) {
-#ifdef DOUBLE_BUFFER
 	memcpy(currFbPtr, scr, 320*240);
 	//Theoretically, also should double-buffer the lcdpal array... ahwell.
-#else
-	currFbPtr=scr;
-#endif
 	xSemaphoreGive(dispSem);
 }
 
 void IRAM_ATTR spi_lcd_send_boarder(uint16_t *scr, int boarder) {
-#ifdef DOUBLE_BUFFER
 	/* Copy the received framebuffer to currFbPtr (thus double buffer it) */
 	screen_boarder = boarder;
 	memcpy(currFbPtr, scr, 320*(240-boarder*2));
-#else
-	currFbPtr=scr;
-#endif
 
 	/* Signal the display task that there's new data in the framebuffer */
 	xSemaphoreGive(dispSem);
 }
 
 void spi_lcd_clear() {
-#ifdef DOUBLE_BUFFER
 	memset(currFbPtr,0,(320*240/sizeof(currFbPtr)));
-#endif
 	xSemaphoreGive(dispSem);
 }
 
 void spi_lcd_init() {
 	printf("spi_lcd_init()\n");
     dispSem=xSemaphoreCreateBinary();
-    //dispDoneSem=xSemaphoreCreateBinary();
-#ifdef DOUBLE_BUFFER
     screen_boarder = 0;
     currFbPtr=heap_caps_malloc(320*240, MALLOC_CAP_32BIT);
     memset(currFbPtr,0,(320*240));
-#endif
+
 #if CONFIG_FREERTOS_UNICORE
 	xTaskCreatePinnedToCore(&displayTask, "display", 6000, NULL, 6, NULL, 0);
 #else
