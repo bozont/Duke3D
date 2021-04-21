@@ -367,7 +367,6 @@ void IRAM_ATTR displayTask(void *arg) {
 
 	//We're going to do a fair few transfers in parallel. Set them all up.
 	for (x=0; x<NO_SIM_TRANS; x++) {
-		//dmamem[x]=pvPortMallocCaps(MEM_PER_TRANS*2, MALLOC_CAP_DMA);
         dmamem[x]=heap_caps_malloc(MEM_PER_TRANS*2, MALLOC_CAP_DMA);
 		assert(dmamem[x]);
 		memset(&trans[x], 0, sizeof(spi_transaction_t));
@@ -375,11 +374,12 @@ void IRAM_ATTR displayTask(void *arg) {
 		trans[x].user=(void*)1;
 		trans[x].tx_buffer=&dmamem[x];
 	}
-	//xSemaphoreGive(dispDoneSem);
 
 	while(1) {
+		/* Take the display semaphore (a signal that the framebuffer (currFbPtr) has new data */
+		/* The task is blocked here until the semaphore is available */
 		xSemaphoreTake(dispSem, portMAX_DELAY);
-//		printf("Display task: frame.\n");
+
 #ifndef DOUBLE_BUFFER
 		uint8_t *myData=(uint8_t*)currFbPtr;
 #endif
@@ -387,14 +387,18 @@ void IRAM_ATTR displayTask(void *arg) {
 		send_header_start(spi, 0, screen_boarder, 320, 240-screen_boarder*2);
 		send_header_cleanup(spi);
         
-		for (x=0; x<320*(240-screen_boarder*2); x+=MEM_PER_TRANS) {
+		for(x=0; x<320*(240-screen_boarder*2); x+=MEM_PER_TRANS) {
 #ifdef DOUBLE_BUFFER
-			for (i=0; i<MEM_PER_TRANS; i+=4) {
-				uint32_t d=currFbPtr[(x+i)/4];
-				dmamem[idx][i+0]=lcdpal[(d>>0)&0xff];
-				dmamem[idx][i+1]=lcdpal[(d>>8)&0xff];
-				dmamem[idx][i+2]=lcdpal[(d>>16)&0xff];
-				dmamem[idx][i+3]=lcdpal[(d>>24)&0xff];
+			for(i = 0; i < MEM_PER_TRANS; i += 4) {
+				/* Get 4 bytes from the framebuffer (uint8 * 4) */
+				uint32_t d = currFbPtr[(x+i)/4];
+				/* 4 pixels, 16bit/pixel */
+				/* Fills the current index of 'dmamem' with MEM_PER_TRANS (640) number of bytes form the framebuffer */
+				/* Look up the color value from 'lcdpal' (LCD palette) */
+				dmamem[idx][i+0] = lcdpal[(d>>0)&0xff];
+				dmamem[idx][i+1] = lcdpal[(d>>8)&0xff];
+				dmamem[idx][i+2] = lcdpal[(d>>16)&0xff];
+				dmamem[idx][i+3] = lcdpal[(d>>24)&0xff];
 			}
 #else
 			for (i=0; i<MEM_PER_TRANS; i++) {
@@ -402,31 +406,40 @@ void IRAM_ATTR displayTask(void *arg) {
 			}
 			myData+=MEM_PER_TRANS;
 #endif
+			/* Set up the SPI transfer for the currently filled buffer */
 			trans[idx].length=MEM_PER_TRANS*16;
 			trans[idx].user=(void*)1;
 			trans[idx].tx_buffer=dmamem[idx];
 
-			ret=spi_device_queue_trans(spi, &trans[idx], portMAX_DELAY);
+			/* Queue the current buffer for transfer and let the DMA transfer it while we fill the next buffer */
+			ret = spi_device_queue_trans(spi, &trans[idx], portMAX_DELAY);
 			assert(ret==ESP_OK);
 
+			/* Move on to filling the next buffer */
 			idx++;
+			/* If we're at the last buffer index - start over */
 			if (idx>=NO_SIM_TRANS) idx=0;
 
+			/* If the number of in progress transfers reaches NO_SIM_TRANS (number of simultaneos transfers) */
 			if (inProgress==NO_SIM_TRANS-1) {
-				ret=spi_device_get_trans_result(spi, &rtrans, portMAX_DELAY);
+				/* Wait for a transfer to finish */
+				ret = spi_device_get_trans_result(spi, &rtrans, portMAX_DELAY);
 				assert(ret==ESP_OK);
 			} else {
+				/* Increase the number of in-progress transfers */
 				inProgress++;
 			}
 		}
-#ifndef DOUBLE_BUFFER
-		//xSemaphoreGive(dispDoneSem);
-#endif
+
+		/* While we have any in-progress transfers */
 		while(inProgress) {
-			ret=spi_device_get_trans_result(spi, &rtrans, portMAX_DELAY);
+			/* Wait for them to finish */
+			ret = spi_device_get_trans_result(spi, &rtrans, portMAX_DELAY);
 			assert(ret==ESP_OK);
+			/* Decrease the number of in-progress transfers */
 			inProgress--;
 		}
+
         SDL_UnlockDisplay();
 	}
 }
@@ -454,12 +467,14 @@ void spi_lcd_send(uint16_t *scr) {
 
 void IRAM_ATTR spi_lcd_send_boarder(uint16_t *scr, int boarder) {
 #ifdef DOUBLE_BUFFER
-	//memcpy(currFbPtr+(boarder*320/4), scr, 320*(240-boarder*2));
-    screen_boarder = boarder;
+	/* Copy the received framebuffer to currFbPtr (thus double buffer it) */
+	screen_boarder = boarder;
 	memcpy(currFbPtr, scr, 320*(240-boarder*2));
 #else
 	currFbPtr=scr;
 #endif
+
+	/* Signal the display task that there's new data in the framebuffer */
 	xSemaphoreGive(dispSem);
 }
 
