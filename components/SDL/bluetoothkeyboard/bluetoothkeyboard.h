@@ -49,8 +49,9 @@ typedef struct {
 #define KBD_SCANCODE_9          0x26
 #define KBD_SCANCODE_m          0x10
 #define KBD_SCANCODE_LSHIFT     0x02
+#define KBD_SCANCODE_ENTER      0x28
 
-#define BT_KEY_MAX 20
+#define BT_KEY_MAX 21
 
 btKeyMapElement bt_keymap[BT_KEY_MAX] = {
     {SDL_SCANCODE_UP,       SDLK_UP,        KBD_SCANCODE_UP,        "UP",       false},
@@ -59,6 +60,7 @@ btKeyMapElement bt_keymap[BT_KEY_MAX] = {
     {SDL_SCANCODE_LEFT,     SDLK_LEFT,      KBD_SCANCODE_LEFT,      "LEFT",     false},
     {SDL_SCANCODE_LCTRL,    SDLK_LCTRL,     KBD_SCANCODE_LCRTL,     "FIRE",     false},
     {SDL_SCANCODE_SPACE,    SDLK_SPACE,     KBD_SCANCODE_e,         "USE",      false},
+    {SDL_SCANCODE_SPACE,    SDLK_SPACE,     KBD_SCANCODE_ENTER,     "USE",      false},
     {SDL_SCANCODE_ESCAPE,   SDLK_ESCAPE,    KBD_SCANCODE_ESCAPE,    "ESC",      false},
     {SDL_SCANCODE_A,        SDLK_a,         KBD_SCANCODE_SPACE,     "JUMP",     false},
     {SDL_SCANCODE_KP_1,     SDLK_1,         KBD_SCANCODE_1,         "1",        false},
